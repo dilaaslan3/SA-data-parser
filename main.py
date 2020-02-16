@@ -5,6 +5,8 @@ import csv
 import os
 from azure.storage.blob import BlobServiceClient
 
+DATA_LIMIT = 300
+
 def consume():
     print('Running Consumer..')
     raw_data = []  # list of incoming data from gagana
@@ -14,7 +16,7 @@ def consume():
 
     for msg in consumer:
         raw_data.append(msg.value)
-        if len(raw_data) == 300:
+        if len(raw_data) == DATA_LIMIT:
             parse_data(raw_data)
     consumer.close()
 
@@ -22,20 +24,25 @@ def consume():
 def parse_data(raw_data):
     parsed_data = []  # array of dict
 
+
     for raw_line in raw_data:
         # string to json
         json_line_data = json.loads(raw_line)
         # getting payload from json
         print(json_line_data['payload'])
+        # sample_raw_line = '{"schema":{"type":"bytes","optional":false},"payload":"eyJleGFuZyI6MCwic2V4IjoxLCJ0aGFsIjo2LCJjaG9sIjoyMzMsInNsb3BlIjozLCJjcCI6MSwidHJlc3RicHMiOjE0NSwib2xkcGVhayI6Mi4zLCJ0aGFsYWNoIjoxNTAsImZicyI6MSwicHJlZGljdGlvbiI6MCwiYWdlIjo2MywiY2EiOjAsInJlc3RlY2ciOjJ9"}'
 
         # decoding base64 payload
         decoded_data = base64.b64decode(json_line_data['payload'])
         print(decoded_data)
+        # "payload":"eyJleGFuZyI6MCwic2V4IjoxLCJ0aGFsIjo2LCJjaG9sIjoyMzMsInNsb3BlIjozLCJjcCI6MSwidHJlc3RicHMiOjE0NSwib2xkcGVhayI6Mi4zLCJ0aGFsYWNoIjoxNTAsImZicyI6MSwicHJlZGljdGlvbiI6MCwiYWdlIjo2MywiY2EiOjAsInJlc3RlY2ciOjJ9"
+
 
         # decoded payload to json
         parsed_line = json.loads(decoded_data)
         print(parsed_line)
         parsed_data.append(parsed_line)
+        # {"exang":0,"sex":1,"thal":6,"chol":233,"slope":3,"cp":1,"trestbps":145,"oldpeak":2.3,"thalach":150,"fbs":1,"prediction":0,"age":63,"ca":0,"restecg":2}
 
     dict_to_csv_file(parsed_data)
 
