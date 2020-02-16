@@ -2,34 +2,25 @@ import base64
 from kafka import KafkaConsumer
 import json
 import csv
+import os
+from azure.storage.blob import BlobServiceClient
 
-
-def consumerSa():
+def consume():
     print('Running Consumer..')
     raw_data = []  # list of incoming data from gagana
     topic_name = 'hello-mqtt-kafka'
     consumer = KafkaConsumer(topic_name, auto_offset_reset='earliest',
                              bootstrap_servers=['localhost:9092'], api_version=(0, 10), consumer_timeout_ms=1000)
 
-    msg = 0  # incoming data = x
     for msg in consumer:
-        raw_data.append(msg)
-        msg = msg + 1
+        raw_data.append(msg.value)
         if len(raw_data) == 300:
             parse_data(raw_data)
-
-
-# datada sadece payload kısmını alıcaz
-# payloadu json a dönüştürecez
-# jsonu csv ye dönüşür
-# csv nin size kontrolünü yap
-# istenilen boyuta geldiği zaman data lake e gönder
+    consumer.close()
 
 
 def parse_data(raw_data):
     parsed_data = []  # array of dict
-
-    x = '{"schema":{"type":"bytes","optional":false},"payload":"eyJleGFuZyI6MCwic2V4IjoxLCJ0aGFsIjo2LCJjaG9sIjoyMzMsInNsb3BlIjozLCJjcCI6MSwidHJlc3RicHMiOjE0NSwib2xkcGVhayI6Mi4zLCJ0aGFsYWNoIjoxNTAsImZicyI6MSwicHJlZGljdGlvbiI6MCwiYWdlIjo2MywiY2EiOjAsInJlc3RlY2ciOjJ9"}'
 
     for raw_line in raw_data:
         # string to json
@@ -50,13 +41,6 @@ def parse_data(raw_data):
 
 
 def dict_to_csv_file(parsed_data):
-    # parsed_line -> dila_dict
-
-    #TODO: delete diladict on the final version
-    diladict = {'exang': 0, 'sex': 1, 'thal': 6, 'chol': 233, 'slope': 3, 'cp': 1, 'trestbps': 145, 'oldpeak': 2.3,
-                'thalach': 150, 'fbs': 1, 'prediction': 0, 'age': 63, 'ca': 0, 'restecg': 2}
-    parsed_data.append(diladict)
-
 
     csv_columns = ['exang', 'sex', 'thal', 'chol', 'slope', 'cp', 'trestbps', 'oldpeak', 'thalach', 'fbs', 'prediction',
                    'age', 'ca', 'restecg']
@@ -73,6 +57,23 @@ def dict_to_csv_file(parsed_data):
         print("exception while dict to csv")
         print(str(exception))
 
+def upload_to_blob_storage():
+    try:
+        connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+        local_file_name = "output.csv"
+        output_file_name = "processed_output.csv"
+        container_name = "cleveland1"
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 
+        blob_client = blob_service_client.get_blob_client(container=container_name, blob=output_file_name)
 
-parse_data([])
+        print(f"Uploading '{local_file_name}' to blob storage with name '{output_file_name}'....")
+        with open(f"{local_file_name}", "rb") as data:
+            blob_client.upload_blob(data)
+        print("File successfully uploaded to Azure Blob Storage.")
+
+    except Exception as ex:
+        print('Exception:')
+        print(ex)
+
+consume()
