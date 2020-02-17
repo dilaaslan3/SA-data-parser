@@ -64,6 +64,8 @@ def dict_to_csv_file(parsed_data):
         print("exception while dict to csv")
         print(str(exception))
 
+    upload_to_blob_storage()
+
 def upload_to_blob_storage():
     try:
         connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
